@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Request - FlightTrack{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="bi bi-pencil"></i> Edit Search Request</h2>
+        <p class="text-muted">Update your flight tracking preferences</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-pencil-square"></i> Edit Request
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('dashboard.edit', request_id=request_id) }}" id="editForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.depart_from.label(class="form-label") }}
+                            {{ form.depart_from(class="form-control" + (" is-invalid" if form.depart_from.errors else "")) }}
+                            {% if form.depart_from.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.depart_from.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.arrive_at.label(class="form-label") }}
+                            {{ form.arrive_at(class="form-control" + (" is-invalid" if form.arrive_at.errors else "")) }}
+                            {% if form.arrive_at.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.arrive_at.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.departure_date.label(class="form-label") }}
+                            {{ form.departure_date(class="form-control" + (" is-invalid" if form.departure_date.errors else "")) }}
+                            {% if form.departure_date.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.departure_date.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3" id="returnDateGroup">
+                            {{ form.return_date.label(class="form-label") }}
+                            {{ form.return_date(class="form-control" + (" is-invalid" if form.return_date.errors else "")) }}
+                            {% if form.return_date.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.return_date.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            {{ form.passengers.label(class="form-label") }}
+                            {{ form.passengers(class="form-control" + (" is-invalid" if form.passengers.errors else ""), type="number", min="1", max="9") }}
+                            {% if form.passengers.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.passengers.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.trip_type.label(class="form-label") }}
+                            <div>
+                                {% for subfield in form.trip_type %}
+                                    <div class="form-check form-check-inline">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.trip_type.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.trip_type.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.preferred_airlines.label(class="form-label") }}
+                            {{ form.preferred_airlines(class="form-select" + (" is-invalid" if form.preferred_airlines.errors else ""), size="5", multiple=True) }}
+                            <small class="form-text text-muted">Hold Ctrl (Cmd on Mac) to select multiple airlines</small>
+                            {% if form.preferred_airlines.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.preferred_airlines.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show/hide return date based on trip type
+    document.addEventListener('DOMContentLoaded', function() {
+        const tripTypeRadios = document.querySelectorAll('input[name="trip_type"]');
+        const returnDateGroup = document.getElementById('returnDateGroup');
+        const returnDateInput = document.querySelector('input[name="return_date"]');
+        
+        function toggleReturnDate() {
+            const selectedTripType = document.querySelector('input[name="trip_type"]:checked').value;
+            if (selectedTripType === 'one_way') {
+                returnDateGroup.style.display = 'none';
+                returnDateInput.value = '';
+                returnDateInput.removeAttribute('required');
+            } else {
+                returnDateGroup.style.display = 'block';
+                returnDateInput.setAttribute('required', 'required');
+            }
+        }
+        
+        // Set initial state
+        toggleReturnDate();
+        
+        // Add event listeners
+        tripTypeRadios.forEach(radio => {
+            radio.addEventListener('change', toggleReturnDate);
+        });
+    });
+</script>
+{% endblock %}
+

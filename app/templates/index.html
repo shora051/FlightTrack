@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Home - FlightTrack{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto text-center">
+        <h1 class="display-4 mb-4">
+            <i class="bi bi-airplane-fill text-primary"></i> FlightTrack
+        </h1>
+        <p class="lead mb-4">
+            Set your flight preferences and let us track prices for you. 
+            Get notified only when prices drop below your historical best.
+        </p>
+        
+        {% if logged_in %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Welcome back! Manage your flight tracking requests from your dashboard.
+            </div>
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary btn-lg">
+                <i class="bi bi-speedometer2"></i> Go to Dashboard
+            </a>
+        {% else %}
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h3 class="card-title mb-4">Get Started</h3>
+                    <p class="card-text mb-4">
+                        Create an account to start tracking flight prices. 
+                        Set it and forget it - we'll monitor prices and notify you of the best deals.
+                    </p>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{{ url_for('auth.signup') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-person-plus"></i> Sign Up
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> Log In
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Set Your Preferences</h5>
+                <p class="card-text">Configure your flight details: dates, destinations, passengers, and preferred airlines.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-down-arrow display-4 text-success mb-3"></i>
+                <h5 class="card-title">Automatic Tracking</h5>
+                <p class="card-text">Our system checks prices twice daily and tracks the best deals for you.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-bell display-4 text-warning mb-3"></i>
+                <h5 class="card-title">Smart Notifications</h5>
+                <p class="card-text">Get notified only when prices drop below your historical best price.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
