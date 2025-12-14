@@ -81,14 +81,28 @@ CREATE TABLE price_tracking (
     last_notified_price NUMERIC
 );
 
+-- Table 4: flight_search_results
+CREATE TABLE flight_search_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
+    price NUMERIC,
+    currency TEXT DEFAULT 'USD',
+    airlines TEXT[],
+    flight_details JSONB,
+    searched_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_search_requests_user_id ON search_requests(user_id);
 CREATE INDEX idx_price_tracking_search_request_id ON price_tracking(search_request_id);
+CREATE INDEX idx_flight_search_results_search_request_id ON flight_search_results(search_request_id);
+CREATE INDEX idx_flight_search_results_searched_at ON flight_search_results(searched_at);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE search_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE price_tracking ENABLE ROW LEVEL SECURITY;
+ALTER TABLE flight_search_results ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS Policies
 -- Note: Since we're using server-side authentication, we'll allow service role operations
@@ -109,9 +123,51 @@ CREATE POLICY "Users can delete own search requests" ON search_requests FOR DELE
 CREATE POLICY "Price tracking is viewable by everyone" ON price_tracking FOR SELECT USING (true);
 CREATE POLICY "Price tracking is insertable by everyone" ON price_tracking FOR INSERT WITH CHECK (true);
 CREATE POLICY "Price tracking is updatable by everyone" ON price_tracking FOR UPDATE USING (true);
+
+-- Flight search results: Accessible through search_requests relationship
+CREATE POLICY "Flight search results are viewable by everyone" ON flight_search_results FOR SELECT USING (true);
+CREATE POLICY "Flight search results are insertable by everyone" ON flight_search_results FOR INSERT WITH CHECK (true);
+CREATE POLICY "Flight search results are updatable by everyone" ON flight_search_results FOR UPDATE USING (true);
 ```
 
 **Important Note on RLS:** The policies above allow operations because your Flask application handles authentication and user ownership validation in the application code. The publishable key will work with these policies. If you want stricter RLS policies that check authentication at the database level, you would need to use Supabase Auth instead of custom authentication.
+
+#### Migration: Adding Flight Search Results Table
+
+If you already have the existing tables and just need to add the new `flight_search_results` table, run this migration script instead:
+
+```sql
+-- Table 4: flight_search_results
+CREATE TABLE IF NOT EXISTS flight_search_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
+    price NUMERIC,
+    currency TEXT DEFAULT 'USD',
+    airlines TEXT[],
+    flight_details JSONB,
+    searched_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_flight_search_results_search_request_id ON flight_search_results(search_request_id);
+CREATE INDEX IF NOT EXISTS idx_flight_search_results_searched_at ON flight_search_results(searched_at);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE flight_search_results ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS Policies
+-- Note: If these policies already exist, you'll get an error but that's okay - just skip those lines
+CREATE POLICY "Flight search results are viewable by everyone" 
+ON flight_search_results FOR SELECT USING (true);
+
+CREATE POLICY "Flight search results are insertable by everyone" 
+ON flight_search_results FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Flight search results are updatable by everyone" 
+ON flight_search_results FOR UPDATE USING (true);
+```
+
+**Note:** If you get an error saying a policy already exists, that's fine - it means it was already created. You can safely ignore those errors.
 
 ### 6. Run the Application
 
@@ -153,4 +209,7 @@ FlightTrack/
 - Edit existing requests
 - Delete requests
 - Automatic price tracking initialization
+- Search for cheapest flights using SerpAPI Google Flights API
+- Store and display flight search results with detailed information
+- Track minimum prices and search history
 

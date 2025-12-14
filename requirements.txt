@@ -5,4 +5,5 @@ email-validator>=2.1.0
 python-dotenv==1.0.0
 supabase==2.25.1
 werkzeug==3.0.1
+requests==2.31.0
 

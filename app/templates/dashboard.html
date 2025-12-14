@@ -26,7 +26,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             {{ form.depart_from.label(class="form-label") }}
-                            {{ form.depart_from(class="form-control" + (" is-invalid" if form.depart_from.errors else "")) }}
+                            {{ form.depart_from(class="form-select" + (" is-invalid" if form.depart_from.errors else "")) }}
                             {% if form.depart_from.errors %}
                                 <div class="invalid-feedback">
                                     {% for error in form.depart_from.errors %}
@@ -38,7 +38,7 @@
                         
                         <div class="col-md-6 mb-3">
                             {{ form.arrive_at.label(class="form-label") }}
-                            {{ form.arrive_at(class="form-control" + (" is-invalid" if form.arrive_at.errors else "")) }}
+                            {{ form.arrive_at(class="form-select" + (" is-invalid" if form.arrive_at.errors else "")) }}
                             {% if form.arrive_at.errors %}
                                 <div class="invalid-feedback">
                                     {% for error in form.arrive_at.errors %}
@@ -151,8 +151,9 @@
                                     <th>Dates</th>
                                     <th>Passengers</th>
                                     <th>Trip Type</th>
-                                    <th>Airlines</th>
-                                    <th>Min Price</th>
+                                    <th>Preferred Airlines</th>
+                                    <th>Cheapest Price</th>
+                                    <th>Last Search</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -188,11 +189,35 @@
                                     <td>
                                         {% if req.price_tracking and req.price_tracking.minimum_price %}
                                             <strong class="text-success">${{ "%.2f"|format(req.price_tracking.minimum_price) }}</strong>
+                                            {% if req.latest_search_result and req.latest_search_result.airlines %}
+                                                <br><small class="text-muted">
+                                                    {% for airline in req.latest_search_result.airlines %}
+                                                        {{ airline }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </small>
+                                            {% endif %}
                                         {% else %}
-                                            <span class="text-muted">Not checked yet</span>
+                                            <span class="text-muted">Not searched yet</span>
                                         {% endif %}
                                     </td>
                                     <td>
+                                        {% if req.price_tracking and req.price_tracking.last_checked %}
+                                            <small>{{ req.price_tracking.last_checked[:10] }}</small>
+                                            <br><small class="text-muted">{{ req.price_tracking.last_checked[11:16] }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('dashboard.search_flights_for_request', request_id=req.id) }}" 
+                                              class="d-inline" 
+                                              id="searchForm{{ req.id }}">
+                                            <button type="submit" class="btn btn-sm btn-success mb-1" 
+                                                    onclick="this.disabled=true; this.innerHTML='<i class=\'bi bi-hourglass-split\'></i> Searching...'; this.form.submit();">
+                                                <i class="bi bi-search"></i> Search Flights
+                                            </button>
+                                        </form>
+                                        <br>
                                         <a href="{{ url_for('dashboard.edit', request_id=req.id) }}" 
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Edit

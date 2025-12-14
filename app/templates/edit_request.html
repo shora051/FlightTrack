@@ -25,7 +25,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             {{ form.depart_from.label(class="form-label") }}
-                            {{ form.depart_from(class="form-control" + (" is-invalid" if form.depart_from.errors else "")) }}
+                            {{ form.depart_from(class="form-select" + (" is-invalid" if form.depart_from.errors else "")) }}
                             {% if form.depart_from.errors %}
                                 <div class="invalid-feedback">
                                     {% for error in form.depart_from.errors %}
@@ -37,7 +37,7 @@
                         
                         <div class="col-md-6 mb-3">
                             {{ form.arrive_at.label(class="form-label") }}
-                            {{ form.arrive_at(class="form-control" + (" is-invalid" if form.arrive_at.errors else "")) }}
+                            {{ form.arrive_at(class="form-select" + (" is-invalid" if form.arrive_at.errors else "")) }}
                             {% if form.arrive_at.errors %}
                                 <div class="invalid-feedback">
                                     {% for error in form.arrive_at.errors %}

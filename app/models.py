@@ -92,3 +92,41 @@ class PriceTracking:
             last_notified_price=float(data['last_notified_price']) if data.get('last_notified_price') else None
         )
 
+class FlightSearchResult:
+    """Flight search result model"""
+    def __init__(self, id: str, search_request_id: str, price: Optional[float],
+                 currency: str, airlines: List[str], flight_details: Dict,
+                 searched_at: Optional[str] = None):
+        self.id = id
+        self.search_request_id = search_request_id
+        self.price = price
+        self.currency = currency
+        self.airlines = airlines or []
+        self.flight_details = flight_details or {}
+        self.searched_at = searched_at
+    
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create FlightSearchResult from dictionary"""
+        return cls(
+            id=data['id'],
+            search_request_id=data['search_request_id'],
+            price=float(data['price']) if data.get('price') else None,
+            currency=data.get('currency', 'USD'),
+            airlines=data.get('airlines', []),
+            flight_details=data.get('flight_details', {}),
+            searched_at=data.get('searched_at')
+        )
+    
+    def to_dict(self) -> Dict:
+        """Convert to dictionary"""
+        return {
+            'id': self.id,
+            'search_request_id': self.search_request_id,
+            'price': self.price,
+            'currency': self.currency,
+            'airlines': self.airlines,
+            'flight_details': self.flight_details,
+            'searched_at': self.searched_at
+        }
+
