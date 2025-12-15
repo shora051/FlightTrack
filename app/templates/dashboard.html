@@ -189,12 +189,19 @@
                                     <td>
                                         {% if req.price_tracking and req.price_tracking.minimum_price %}
                                             <strong class="text-success">${{ "%.2f"|format(req.price_tracking.minimum_price) }}</strong>
-                                            {% if req.latest_search_result and req.latest_search_result.airlines %}
+                                            {% if req.price_tracking.airlines %}
                                                 <br><small class="text-muted">
-                                                    {% for airline in req.latest_search_result.airlines %}
+                                                    {% for airline in req.price_tracking.airlines %}
                                                         {{ airline }}{% if not loop.last %}, {% endif %}
                                                     {% endfor %}
                                                 </small>
+                                            {% endif %}
+                                            {% set link = req.price_tracking.flight_details.link if req.price_tracking.flight_details else None %}
+                                            {% if link %}
+                                                <br>
+                                                <a href="{{ link }}" class="small" target="_blank" rel="noopener noreferrer">
+                                                    Open flight
+                                                </a>
                                             {% endif %}
                                         {% else %}
                                             <span class="text-muted">Not searched yet</span>

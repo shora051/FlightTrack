@@ -107,14 +107,14 @@ def get_user_search_requests(user_id: str) -> List[Dict]:
 
 def get_user_search_requests_with_tracking(user_id: str) -> List[Dict]:
     """
-    Get all search requests for a user with price tracking and latest search results
+    Get all search requests for a user with price tracking data
     Optimized to reduce database queries
     
     Args:
         user_id: User ID
     
     Returns:
-        List of search requests with price_tracking and latest_search_result attached
+        List of search requests with price_tracking attached (which includes latest search result data)
     """
     supabase = get_supabase_client()
     try:
@@ -128,30 +128,16 @@ def get_user_search_requests_with_tracking(user_id: str) -> List[Dict]:
         # Get all request IDs
         request_ids = [req['id'] for req in requests]
         
-        # Get all price tracking entries in one query
+        # Get all price tracking entries (which now includes latest search result data)
         price_tracking_result = supabase.table('price_tracking').select('*').in_('search_request_id', request_ids).execute()
         price_tracking_map = {
             pt['search_request_id']: pt 
             for pt in (price_tracking_result.data if price_tracking_result.data else [])
         }
         
-        # Get latest search results for each request
-        # We'll need to do this per request since we need the most recent one
-        # But we can optimize by getting all results and filtering in Python
-        search_results_result = supabase.table('flight_search_results').select('*').in_('search_request_id', request_ids).order('searched_at', desc=True).execute()
-        all_results = search_results_result.data if search_results_result.data else []
-        
-        # Create a map of latest results (first occurrence is latest due to ordering)
-        latest_results_map = {}
-        for result in all_results:
-            req_id = result['search_request_id']
-            if req_id not in latest_results_map:
-                latest_results_map[req_id] = result
-        
-        # Attach tracking and results to requests
+        # Attach tracking to requests
         for req in requests:
             req['price_tracking'] = price_tracking_map.get(req['id'])
-            req['latest_search_result'] = latest_results_map.get(req['id'])
         
         return requests
     except Exception as e:
@@ -236,13 +222,29 @@ def get_price_tracking(search_request_id: str) -> Optional[Dict]:
         return None
 
 def update_price_tracking(search_request_id: str, minimum_price: Optional[float]) -> Optional[Dict]:
-    """Update price tracking with new minimum price and last checked timestamp"""
+    """
+    Update price tracking with new minimum price and last checked timestamp.
+    This is a basic update that only sets the minimum price and timestamp.
+    Use update_price_tracking_with_result() to also store search result details.
+    """
     supabase = get_supabase_client()
     try:
         from datetime import datetime
         
+        # Get current tracking to preserve existing minimum_price if new one is higher
+        current_tracking = get_price_tracking(search_request_id)
+        final_minimum_price = minimum_price
+        
+        if current_tracking and current_tracking.get('minimum_price') is not None:
+            if minimum_price is not None:
+                # Only update if new price is lower (better deal)
+                final_minimum_price = min(float(current_tracking['minimum_price']), float(minimum_price))
+            else:
+                # Keep existing minimum if new price is None
+                final_minimum_price = current_tracking['minimum_price']
+        
         update_data = {
-            'minimum_price': minimum_price,
+            'minimum_price': final_minimum_price,
             'last_checked': datetime.utcnow().isoformat()
         }
         
@@ -255,53 +257,53 @@ def update_price_tracking(search_request_id: str, minimum_price: Optional[float]
         print(f"Error updating price tracking: {e}")
         return None
 
-def create_flight_search_result(search_request_id: str, price: Optional[float],
-                                currency: str, airlines: List[str], 
-                                flight_details: Dict) -> Optional[Dict]:
-    """Create a new flight search result entry"""
+def update_price_tracking_with_result(search_request_id: str, price: Optional[float],
+                                     currency: str, airlines: List[str], 
+                                     flight_details: Dict,
+                                     flight_link: Optional[str] = None) -> Optional[Dict]:
+    """
+    Update price tracking with new search result data.
+    This consolidates the search result into the price_tracking table.
+    Also updates minimum_price if the new price is lower.
+    """
     supabase = get_supabase_client()
     try:
         from datetime import datetime
-        import json
         
-        data = {
-            'search_request_id': search_request_id,
-            'price': price,
+        # Get current tracking to determine minimum price
+        current_tracking = get_price_tracking(search_request_id)
+        minimum_price = price
+        
+        if current_tracking and current_tracking.get('minimum_price') is not None:
+            if price is not None:
+                # Update minimum price if new price is lower (better deal)
+                minimum_price = min(float(current_tracking['minimum_price']), float(price))
+            else:
+                # Keep existing minimum if new price is None
+                minimum_price = current_tracking['minimum_price']
+        elif price is None:
+            minimum_price = None
+        
+        resolved_link = flight_link
+        if not resolved_link and isinstance(flight_details, dict):
+            resolved_link = flight_details.get('link')
+
+        update_data = {
+            'latest_price': price,
             'currency': currency,
             'airlines': airlines,
             'flight_details': flight_details,  # Supabase will handle JSONB
-            'searched_at': datetime.utcnow().isoformat()
+            'minimum_price': minimum_price,
+            'last_checked': datetime.utcnow().isoformat(),
+            'flight_link': resolved_link
         }
         
-        result = supabase.table('flight_search_results').insert(data).execute()
+        result = supabase.table('price_tracking').update(update_data).eq('search_request_id', search_request_id).execute()
         
         if result.data:
             return result.data[0]
         return None
     except Exception as e:
-        print(f"Error creating flight search result: {e}")
+        print(f"Error updating price tracking with result: {e}")
         return None
-
-def get_latest_flight_search_result(search_request_id: str) -> Optional[Dict]:
-    """Get the most recent flight search result for a search request"""
-    supabase = get_supabase_client()
-    try:
-        result = supabase.table('flight_search_results').select('*').eq('search_request_id', search_request_id).order('searched_at', desc=True).limit(1).execute()
-        
-        if result.data and len(result.data) > 0:
-            return result.data[0]
-        return None
-    except Exception as e:
-        print(f"Error getting flight search result: {e}")
-        return None
-
-def get_all_flight_search_results(search_request_id: str) -> List[Dict]:
-    """Get all flight search results for a search request"""
-    supabase = get_supabase_client()
-    try:
-        result = supabase.table('flight_search_results').select('*').eq('search_request_id', search_request_id).order('searched_at', desc=True).execute()
-        return result.data if result.data else []
-    except Exception as e:
-        print(f"Error getting flight search results: {e}")
-        return []
 

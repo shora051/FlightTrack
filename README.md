@@ -44,6 +44,14 @@ Edit `.env` with your actual values:
 
 ### 5. Database Setup
 
+The application uses a simplified schema with three core tables:
+
+- **`users`**: Stores user account information
+- **`search_requests`**: Stores user flight search configurations
+- **`price_tracking`**: Stores price tracking metadata and latest search results
+
+#### Initial Setup
+
 Run the following SQL in your Supabase SQL Editor to create the required tables:
 
 ```sql
@@ -73,36 +81,28 @@ CREATE TABLE search_requests (
 );
 
 -- Table 3: price_tracking
+-- Consolidated table that tracks price metadata and stores latest search result details
 CREATE TABLE price_tracking (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
     minimum_price NUMERIC,
     last_checked TIMESTAMP,
-    last_notified_price NUMERIC
-);
-
--- Table 4: flight_search_results
-CREATE TABLE flight_search_results (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
-    price NUMERIC,
+    last_notified_price NUMERIC,
+    -- Latest search result fields (consolidated from flight_search_results)
+    latest_price NUMERIC,
     currency TEXT DEFAULT 'USD',
     airlines TEXT[],
-    flight_details JSONB,
-    searched_at TIMESTAMP DEFAULT NOW()
+    flight_details JSONB
 );
 
 -- Create indexes for better performance
 CREATE INDEX idx_search_requests_user_id ON search_requests(user_id);
 CREATE INDEX idx_price_tracking_search_request_id ON price_tracking(search_request_id);
-CREATE INDEX idx_flight_search_results_search_request_id ON flight_search_results(search_request_id);
-CREATE INDEX idx_flight_search_results_searched_at ON flight_search_results(searched_at);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE search_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE price_tracking ENABLE ROW LEVEL SECURITY;
-ALTER TABLE flight_search_results ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS Policies
 -- Note: Since we're using server-side authentication, we'll allow service role operations
@@ -123,51 +123,72 @@ CREATE POLICY "Users can delete own search requests" ON search_requests FOR DELE
 CREATE POLICY "Price tracking is viewable by everyone" ON price_tracking FOR SELECT USING (true);
 CREATE POLICY "Price tracking is insertable by everyone" ON price_tracking FOR INSERT WITH CHECK (true);
 CREATE POLICY "Price tracking is updatable by everyone" ON price_tracking FOR UPDATE USING (true);
-
--- Flight search results: Accessible through search_requests relationship
-CREATE POLICY "Flight search results are viewable by everyone" ON flight_search_results FOR SELECT USING (true);
-CREATE POLICY "Flight search results are insertable by everyone" ON flight_search_results FOR INSERT WITH CHECK (true);
-CREATE POLICY "Flight search results are updatable by everyone" ON flight_search_results FOR UPDATE USING (true);
 ```
 
 **Important Note on RLS:** The policies above allow operations because your Flask application handles authentication and user ownership validation in the application code. The publishable key will work with these policies. If you want stricter RLS policies that check authentication at the database level, you would need to use Supabase Auth instead of custom authentication.
 
-#### Migration: Adding Flight Search Results Table
+#### Migration: Removing Redundant Tables
 
-If you already have the existing tables and just need to add the new `flight_search_results` table, run this migration script instead:
+If you have an existing database with redundant tables (`flight_search_results`, `price_history`, `user_searches`), run this migration script to consolidate and clean up:
+
+**⚠️ IMPORTANT: Before running this migration:**
+1. **Back up your database** (Supabase has automatic backups, but you may want to export data)
+2. **Review your data** - Make sure you understand what data will be migrated
+3. Run this in a **new SQL editor tab** in Supabase
 
 ```sql
--- Table 4: flight_search_results
-CREATE TABLE IF NOT EXISTS flight_search_results (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
-    price NUMERIC,
-    currency TEXT DEFAULT 'USD',
-    airlines TEXT[],
-    flight_details JSONB,
-    searched_at TIMESTAMP DEFAULT NOW()
-);
+-- Step 1: Add new columns to price_tracking if they don't exist
+-- (This must be done BEFORE migrating data)
+ALTER TABLE price_tracking 
+ADD COLUMN IF NOT EXISTS latest_price NUMERIC,
+ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD',
+ADD COLUMN IF NOT EXISTS airlines TEXT[],
+ADD COLUMN IF NOT EXISTS flight_details JSONB;
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_flight_search_results_search_request_id ON flight_search_results(search_request_id);
-CREATE INDEX IF NOT EXISTS idx_flight_search_results_searched_at ON flight_search_results(searched_at);
+-- Step 2: Migrate latest search results from flight_search_results to price_tracking
+-- This preserves the most recent search result for each search_request
+-- Only runs if flight_search_results table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'flight_search_results') THEN
+        UPDATE price_tracking pt
+        SET 
+            latest_price = fsr.price,
+            currency = COALESCE(fsr.currency, 'USD'),
+            airlines = fsr.airlines,
+            flight_details = fsr.flight_details
+        FROM (
+            SELECT DISTINCT ON (search_request_id) 
+                search_request_id,
+                price,
+                currency,
+                airlines,
+                flight_details
+            FROM flight_search_results
+            ORDER BY search_request_id, searched_at DESC
+        ) fsr
+        WHERE pt.search_request_id = fsr.search_request_id;
+    END IF;
+END $$;
 
--- Enable Row Level Security (RLS)
-ALTER TABLE flight_search_results ENABLE ROW LEVEL SECURITY;
-
--- Create RLS Policies
--- Note: If these policies already exist, you'll get an error but that's okay - just skip those lines
-CREATE POLICY "Flight search results are viewable by everyone" 
-ON flight_search_results FOR SELECT USING (true);
-
-CREATE POLICY "Flight search results are insertable by everyone" 
-ON flight_search_results FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Flight search results are updatable by everyone" 
-ON flight_search_results FOR UPDATE USING (true);
+-- Step 3: Drop redundant tables (after migration is complete)
+-- WARNING: This will permanently delete data from these tables
+-- Make sure you've migrated any important data first
+DROP TABLE IF EXISTS flight_search_results CASCADE;
+DROP TABLE IF EXISTS price_history CASCADE;
+DROP TABLE IF EXISTS user_searches CASCADE;
 ```
 
-**Note:** If you get an error saying a policy already exists, that's fine - it means it was already created. You can safely ignore those errors.
+### 7. Migration: Add flight link to price_tracking
+
+Add a dedicated column for the outbound URL of the cheapest flight returned by SerpApi. This preserves the link even if the raw flight_details JSON changes.
+
+```sql
+ALTER TABLE price_tracking
+ADD COLUMN IF NOT EXISTS flight_link TEXT;
+```
+
+**Warning:** The migration script above will delete the `flight_search_results`, `price_history`, and `user_searches` tables. Make sure you've reviewed and migrated any important data before running it.
 
 ### 6. Run the Application
 
@@ -204,12 +225,25 @@ FlightTrack/
 ## Features
 
 - User authentication (sign up, log in, log out)
-- Create flight search requests
-- View all search requests
+- Create flight search requests with preferences (airlines, dates, passengers)
+- View all search requests in a dashboard
 - Edit existing requests
 - Delete requests
 - Automatic price tracking initialization
 - Search for cheapest flights using SerpAPI Google Flights API
-- Store and display flight search results with detailed information
-- Track minimum prices and search history
+- Consolidated price tracking with latest search results
+- Track minimum prices seen over time
+
+## Database Schema
+
+The application uses a simplified three-table schema:
+
+1. **`users`**: Stores user account information (email, password hash)
+2. **`search_requests`**: Stores user flight search configurations (route, dates, passengers, preferred airlines)
+3. **`price_tracking`**: Consolidated table that tracks:
+   - Minimum price seen (`minimum_price`)
+   - Latest search result details (`latest_price`, `currency`, `airlines`, `flight_details`)
+   - Tracking metadata (`last_checked`, `last_notified_price`)
+
+This consolidated approach eliminates redundancy while maintaining all necessary functionality for price tracking.
 

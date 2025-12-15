@@ -1,11 +1,17 @@
 """
 SerpAPI service for searching flights using Google Flights API
 """
+import re
 import requests
 from flask import current_app
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from datetime import datetime
-from app.constants import SERPAPI_TRIP_TYPE_ROUND_TRIP, SERPAPI_TRIP_TYPE_ONE_WAY, DEFAULT_CURRENCY, API_TIMEOUT
+from app.constants import (
+    SERPAPI_TRIP_TYPE_ROUND_TRIP,
+    SERPAPI_TRIP_TYPE_ONE_WAY,
+    DEFAULT_CURRENCY,
+    API_TIMEOUT,
+)
 
 # Mapping of airline names to IATA codes for SerpAPI
 AIRLINE_NAME_TO_IATA = {
@@ -43,25 +49,43 @@ AIRLINE_NAME_TO_IATA = {
     'Scandinavian': 'SK'
 }
 
-def convert_airline_names_to_codes(airline_names: List[str]) -> List[str]:
+# Alliance keywords supported by SerpApi include_airlines
+ALLIANCE_CODES = {'STAR_ALLIANCE', 'SKYTEAM', 'ONEWORLD'}
+
+# IATA code: two uppercase letters or one uppercase letter + one digit
+VALID_AIRLINE_CODE_PATTERN = re.compile(r'^[A-Z]{2}$|^[A-Z][0-9]$')
+
+def convert_airline_names_to_codes(airline_names: List[str]) -> Tuple[List[str], List[str]]:
     """
-    Convert airline names to IATA codes
-    
-    Args:
-        airline_names: List of airline names
-    
+    Convert airline names to valid SerpApi include_airlines codes.
+
     Returns:
-        List of IATA codes
+        (valid_codes, invalid_values)
     """
-    codes = []
+    codes: List[str] = []
+    invalid: List[str] = []
+
     for name in airline_names:
-        code = AIRLINE_NAME_TO_IATA.get(name)
-        if code:
+        raw = AIRLINE_NAME_TO_IATA.get(name, name)
+        code = raw.strip().upper() if isinstance(raw, str) else ''
+        if not code:
+            continue
+
+        if code in ALLIANCE_CODES or VALID_AIRLINE_CODE_PATTERN.match(code):
             codes.append(code)
         else:
-            # If name not found, try using it as-is (might already be a code)
-            codes.append(name)
-    return codes
+            # Keep track of values we intentionally skip to avoid sending bad params
+            invalid.append(code)
+
+    # Deduplicate while preserving order to avoid bloating the query string
+    seen = set()
+    unique_codes = []
+    for code in codes:
+        if code not in seen:
+            seen.add(code)
+            unique_codes.append(code)
+
+    return unique_codes, invalid
 
 def search_flights(depart_from: str, arrive_at: str, departure_date: str,
                    return_date: Optional[str] = None, passengers: int = 1,
@@ -108,9 +132,12 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
     # Add preferred airlines if provided
     # SerpAPI uses 'include_airlines' parameter with IATA codes (e.g., "DL" for Delta)
     if preferred_airlines and len(preferred_airlines) > 0:
-        airline_codes = convert_airline_names_to_codes(preferred_airlines)
+        airline_codes, invalid_airlines = convert_airline_names_to_codes(preferred_airlines)
         if airline_codes:
             params['include_airlines'] = ','.join(airline_codes)
+        if invalid_airlines:
+            # Log invalid entries for debugging; do not send them to SerpApi
+            print(f"Skipped invalid airline entries for SerpApi include_airlines: {invalid_airlines}")
     
     try:
         # Make API request
@@ -120,6 +147,14 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
         
         # Extract cheapest flight from results
         cheapest_flight = extract_cheapest_flight(data)
+
+        # Attach a shareable search URL if SerpApi provides one
+        search_url = None
+        meta = data.get('search_metadata', {}) if isinstance(data, dict) else {}
+        if isinstance(meta, dict):
+            search_url = meta.get('google_flights_url') or meta.get('serpapi_url')
+        if cheapest_flight is not None and search_url and not cheapest_flight.get('link'):
+            cheapest_flight['link'] = search_url
         
         return {
             'success': True,

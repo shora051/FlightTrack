@@ -3,7 +3,7 @@ from app.forms import SearchRequestForm
 from app.database import (
     create_search_request, get_user_search_requests_with_tracking, get_search_request_by_id,
     update_search_request, delete_search_request,
-    update_price_tracking, create_flight_search_result
+    update_price_tracking_with_result
 )
 from app.auth import login_required
 from app.serpapi_service import search_flights
@@ -146,16 +146,14 @@ def search_flights_for_request(request_id):
             price = get_cheapest_price_from_flight(cheapest_flight)
             
             if price:
-                # Update price tracking
-                update_price_tracking(request_id, price)
-                
-                # Store detailed flight search result
-                create_flight_search_result(
+                # Update price tracking with search result (consolidated operation)
+                update_price_tracking_with_result(
                     search_request_id=request_id,
                     price=price,
                     currency=cheapest_flight.get('currency', 'USD'),
                     airlines=cheapest_flight.get('airlines', []),
-                    flight_details=cheapest_flight
+                    flight_details=cheapest_flight,
+                    flight_link=cheapest_flight.get('link')
                 )
                 
                 currency = cheapest_flight.get('currency', 'USD')
