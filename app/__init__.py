@@ -13,6 +13,10 @@ def create_app():
     app.config['SUPABASE_URL'] = os.getenv('SUPABASE_URL')
     app.config['SUPABASE_KEY'] = os.getenv('SUPABASE_KEY')
     app.config['SERPAPI_KEY'] = os.getenv('SERPAPI_KEY')
+    app.config['MAILGUN_API_KEY'] = os.getenv('MAILGUN_API_KEY')
+    app.config['MAILGUN_DOMAIN'] = os.getenv('MAILGUN_DOMAIN')
+    app.config['MAILGUN_FROM_EMAIL'] = os.getenv('MAILGUN_FROM_EMAIL')
+    app.config['MAILGUN_BASE_URL'] = os.getenv('MAILGUN_BASE_URL', 'https://api.mailgun.net/v3')
     
     # Register blueprints
     from app.auth import auth_bp
@@ -20,6 +24,16 @@ def create_app():
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    
+    # Make auth state available in all templates
+    @app.context_processor
+    def inject_auth_state():
+        from flask import session
+        return {
+            'logged_in': 'user_id' in session,
+            'user_email': session.get('email'),
+            'is_verified': session.get('is_verified', True)
+        }
     
     # Home route
     @app.route('/')
