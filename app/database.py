@@ -67,7 +67,7 @@ def get_user_by_email(email: str) -> Optional[Dict]:
 
 def create_search_request(user_id: str, depart_from: str, arrive_at: str, 
                          departure_date: str, return_date: Optional[str],
-                         passengers: int, trip_type: str, 
+                         trip_type: str, 
                          preferred_airlines: Optional[List[str]],
                          stops: int = 0) -> Optional[Dict]:
     """Create a new search request"""
@@ -79,7 +79,6 @@ def create_search_request(user_id: str, depart_from: str, arrive_at: str,
             'arrive_at': arrive_at,
             'departure_date': departure_date,
             'return_date': return_date,
-            'passengers': passengers,
             'trip_type': trip_type,
             'preferred_airlines': preferred_airlines,
             'stops': stops

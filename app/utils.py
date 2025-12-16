@@ -40,7 +40,6 @@ def prepare_search_request_data(form_data: Dict) -> Dict[str, Any]:
         'arrive_at': form_data['arrive_at'].strip() if isinstance(form_data.get('arrive_at'), str) else form_data.get('arrive_at'),
         'departure_date': form_data['departure_date'].isoformat() if hasattr(form_data.get('departure_date'), 'isoformat') else form_data.get('departure_date'),
         'return_date': return_date,
-        'passengers': form_data.get('passengers'),
         'trip_type': form_data.get('trip_type'),
         'preferred_airlines': form_data.get('preferred_airlines') if form_data.get('preferred_airlines') else None,
         'stops': form_data.get('stops', 0)
@@ -59,7 +58,6 @@ def populate_form_from_search_request(form, search_request: Dict) -> None:
     form.departure_date.data = datetime.fromisoformat(search_request['departure_date']).date()
     if search_request.get('return_date'):
         form.return_date.data = datetime.fromisoformat(search_request['return_date']).date()
-    form.passengers.data = search_request.get('passengers')
     form.trip_type.data = search_request.get('trip_type')
     form.stops.data = search_request.get('stops', 0)
     if search_request.get('preferred_airlines'):

@@ -88,7 +88,7 @@ def convert_airline_names_to_codes(airline_names: List[str]) -> Tuple[List[str],
     return unique_codes, invalid
 
 def search_flights(depart_from: str, arrive_at: str, departure_date: str,
-                   return_date: Optional[str] = None, passengers: int = 1,
+                   return_date: Optional[str] = None,
                    preferred_airlines: Optional[List[str]] = None,
                    stops: int = 0) -> Optional[Dict]:
     """
@@ -99,7 +99,6 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
         arrive_at: Destination airport code (e.g., 'LAX')
         departure_date: Departure date in YYYY-MM-DD format
         return_date: Return date in YYYY-MM-DD format (optional)
-        passengers: Number of passengers (default: 1)
         preferred_airlines: List of preferred airline names (optional)
         stops: Number of stops preference (0=any, 1=nonstop, 2=1 stop or fewer, 3=2 stops or fewer, default: 0)
     
@@ -120,7 +119,7 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
         'departure_id': depart_from,
         'arrival_id': arrive_at,
         'outbound_date': departure_date,
-        'adults': passengers
+        'adults': 1  # Default to 1 passenger
     }
     
     # Set trip type: 1 = Round trip, 2 = One way

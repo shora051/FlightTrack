@@ -26,7 +26,7 @@ class User:
 class SearchRequest:
     """Search request model"""
     def __init__(self, id: str, user_id: str, depart_from: str, arrive_at: str,
-                 departure_date: str, return_date: Optional[str], passengers: int,
+                 departure_date: str, return_date: Optional[str],
                  trip_type: str, preferred_airlines: Optional[List[str]],
                  stops: int = 0, created_at: Optional[str] = None):
         self.id = id
@@ -35,7 +35,6 @@ class SearchRequest:
         self.arrive_at = arrive_at
         self.departure_date = departure_date
         self.return_date = return_date
-        self.passengers = passengers
         self.trip_type = trip_type
         self.preferred_airlines = preferred_airlines or []
         self.stops = stops
@@ -51,7 +50,6 @@ class SearchRequest:
             arrive_at=data['arrive_at'],
             departure_date=data['departure_date'],
             return_date=data.get('return_date'),
-            passengers=data['passengers'],
             trip_type=data['trip_type'],
             preferred_airlines=data.get('preferred_airlines'),
             stops=data.get('stops', 0),
@@ -67,7 +65,6 @@ class SearchRequest:
             'arrive_at': self.arrive_at,
             'departure_date': self.departure_date,
             'return_date': self.return_date,
-            'passengers': self.passengers,
             'trip_type': self.trip_type,
             'preferred_airlines': self.preferred_airlines,
             'stops': self.stops,

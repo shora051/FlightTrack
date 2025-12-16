@@ -126,7 +126,6 @@ class SearchRequestForm(FlaskForm):
                                format='%Y-%m-%d')
     return_date = DateField('Return Date', validators=[Optional()],
                            format='%Y-%m-%d')
-    passengers = IntegerField('Passengers', validators=[DataRequired(), NumberRange(min=1, max=9)])
     trip_type = RadioField('Trip Type', choices=[('one_way', 'One Way'), ('round_trip', 'Round Trip')],
                           validators=[DataRequired()], default='round_trip')
     stops = SelectField('Number of Stops', 

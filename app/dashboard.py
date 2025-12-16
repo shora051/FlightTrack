@@ -42,7 +42,6 @@ def create():
             'arrive_at': form.arrive_at.data,
             'departure_date': form.departure_date.data,
             'return_date': form.return_date.data,
-            'passengers': form.passengers.data,
             'trip_type': form.trip_type.data,
             'preferred_airlines': form.preferred_airlines.data,
             'stops': form.stops.data
@@ -83,7 +82,6 @@ def edit(request_id):
             'arrive_at': form.arrive_at.data,
             'departure_date': form.departure_date.data,
             'return_date': form.return_date.data,
-            'passengers': form.passengers.data,
             'trip_type': form.trip_type.data,
             'preferred_airlines': form.preferred_airlines.data,
             'stops': form.stops.data
@@ -139,7 +137,6 @@ def search_flights_for_request(request_id):
             arrive_at=search_request['arrive_at'],
             departure_date=search_request['departure_date'],
             return_date=search_request.get('return_date'),
-            passengers=search_request['passengers'],
             preferred_airlines=search_request.get('preferred_airlines'),
             stops=search_request.get('stops', 0)
         )
