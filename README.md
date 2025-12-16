@@ -1,259 +1,190 @@
-# FlightTrack
+## FlightTrack
 
-A web application for tracking flight prices. Users can configure flight tracking preferences, and a background system autonomously scans for deals daily and emails users when prices drop.
+A web application for tracking flight prices. Users configure flight tracking preferences, and a background system checks for deals and emails users when prices drop.
+
+---
 
 ## Setup Instructions
 
-### 1. Create Virtual Environment
+### 1. Create virtual environment
 
 ```bash
 python -m venv venv
 ```
 
-### 2. Activate Virtual Environment
+### 2. Activate virtual environment
 
-**Windows:**
+**Windows (PowerShell):**
+
 ```bash
-venv\Scripts\activate
+venv\Scripts\Activate
 ```
 
-**macOS/Linux:**
+**macOS / Linux (bash/zsh):**
+
 ```bash
 source venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Environment Variables
+### 4. Configure environment variables
 
-Copy `.env.example` to `.env` and fill in your credentials:
+Create a `.env` file in the project root with at least the following values:
 
 ```bash
-cp .env.example .env
+# Supabase
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_anon_or_service_key
+
+# SerpApi
+SERPAPI_KEY=your_serpapi_key
+
+# Flask
+SECRET_KEY=a_secure_random_string
+
+# Email (Gmail)
+GMAIL_USER=your_gmail_address
+GMAIL_APP_PASSWORD=your_gmail_app_password
+
+# Optional overrides
+GMAIL_SMTP_SERVER=smtp.gmail.com
+GMAIL_SMTP_PORT=587
+GMAIL_FROM_EMAIL=address_used_in_from_header
 ```
 
-Edit `.env` with your actual values:
-- `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_KEY`: Your Supabase anon key
-- `SERPAPI_KEY`: Your SerpApi key
-- `SECRET_KEY`: Generate a secure random key for Flask sessions
-- `GMAIL_SMTP_SERVER` (optional): Gmail SMTP server, defaults to `smtp.gmail.com`
-- `GMAIL_SMTP_PORT` (optional): SMTP port, defaults to `587`
-- `GMAIL_USER`: Your Gmail address used to send emails
-- `GMAIL_APP_PASSWORD`: The 16-character App Password generated in your Google Account
-- `GMAIL_FROM_EMAIL` (optional): From address, defaults to `GMAIL_USER`
+- **`GMAIL_USER` / `GMAIL_APP_PASSWORD`** must correspond to a Gmail account with 2FA enabled and an App Password generated in **Google Account → Security → App passwords**.
+- `GMAIL_FROM_EMAIL` defaults to `GMAIL_USER` if not set.
 
-To create a Gmail App Password:
-1. Enable 2-Step Verification for your Google account.
-2. In your Google Account under **Security → App passwords**, create a new App Password for \"Mail\".
-3. Use the generated 16-character password as `GMAIL_APP_PASSWORD` in your `.env`.
+### 5. Database setup (Supabase)
 
-### 5. Database Setup
-
-The application uses a simplified schema with three core tables:
-
-- **`users`**: Stores user account information
-- **`search_requests`**: Stores user flight search configurations
-- **`price_tracking`**: Stores price tracking metadata and latest search results
-
-#### Initial Setup
-
-Run the following SQL in your Supabase SQL Editor to create the required tables:
+The app uses Supabase with a simple three-table schema. In the **Supabase SQL editor**, run this once in your database:
 
 ```sql
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Table 1: users
-CREATE TABLE users (
+-- Users table
+CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Table 2: search_requests
-CREATE TABLE search_requests (
+-- Search requests configured by each user
+CREATE TABLE IF NOT EXISTS public.search_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     depart_from TEXT NOT NULL,
     arrive_at TEXT NOT NULL,
     departure_date DATE NOT NULL,
     return_date DATE,
-    passengers INTEGER NOT NULL CHECK (passengers >= 1 AND passengers <= 9),
     trip_type TEXT NOT NULL CHECK (trip_type IN ('one_way', 'round_trip')),
     preferred_airlines TEXT[],
-    created_at TIMESTAMP DEFAULT NOW()
+    stops INTEGER NOT NULL DEFAULT 0 CHECK (stops >= 0 AND stops <= 3),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Table 3: price_tracking
--- Consolidated table that tracks price metadata and stores latest search result details
-CREATE TABLE price_tracking (
+-- Price tracking + latest result snapshot for each search request
+CREATE TABLE IF NOT EXISTS public.price_tracking (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    search_request_id UUID NOT NULL REFERENCES search_requests(id) ON DELETE CASCADE,
+    search_request_id UUID NOT NULL REFERENCES public.search_requests(id) ON DELETE CASCADE,
     minimum_price NUMERIC,
-    last_checked TIMESTAMP,
+    last_checked TIMESTAMPTZ,
     last_notified_price NUMERIC,
-    -- Latest search result fields (consolidated from flight_search_results)
     latest_price NUMERIC,
     currency TEXT DEFAULT 'USD',
     airlines TEXT[],
-    flight_details JSONB
+    flight_details JSONB,
+    flight_link TEXT
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_search_requests_user_id ON search_requests(user_id);
-CREATE INDEX idx_price_tracking_search_request_id ON price_tracking(search_request_id);
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_search_requests_user_id
+    ON public.search_requests(user_id);
 
--- Enable Row Level Security (RLS)
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE search_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE price_tracking ENABLE ROW LEVEL SECURITY;
-
--- Create RLS Policies
--- Note: Since we're using server-side authentication, we'll allow service role operations
--- but restrict based on user_id for search_requests and price_tracking
-
--- Users table: Allow all operations (authentication handled by application)
-CREATE POLICY "Users are viewable by everyone" ON users FOR SELECT USING (true);
-CREATE POLICY "Users are insertable by everyone" ON users FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users are updatable by owner" ON users FOR UPDATE USING (true);
-
--- Search requests: Users can only see/modify their own requests
-CREATE POLICY "Users can view own search requests" ON search_requests FOR SELECT USING (true);
-CREATE POLICY "Users can insert own search requests" ON search_requests FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own search requests" ON search_requests FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own search requests" ON search_requests FOR DELETE USING (true);
-
--- Price tracking: Accessible through search_requests relationship
-CREATE POLICY "Price tracking is viewable by everyone" ON price_tracking FOR SELECT USING (true);
-CREATE POLICY "Price tracking is insertable by everyone" ON price_tracking FOR INSERT WITH CHECK (true);
-CREATE POLICY "Price tracking is updatable by everyone" ON price_tracking FOR UPDATE USING (true);
+CREATE INDEX IF NOT EXISTS idx_price_tracking_search_request_id
+    ON public.price_tracking(search_request_id);
 ```
 
-**Important Note on RLS:** The policies above allow operations because your Flask application handles authentication and user ownership validation in the application code. The publishable key will work with these policies. If you want stricter RLS policies that check authentication at the database level, you would need to use Supabase Auth instead of custom authentication.
+This is all you need for a fresh setup. Any older migration/RLS complexity has been removed from the default instructions.
 
-#### Migration: Removing Redundant Tables
+### 6. Run the application
 
-If you have an existing database with redundant tables (`flight_search_results`, `price_history`, `user_searches`), run this migration script to consolidate and clean up:
+From the project root, with your virtual environment active and `.env` configured:
 
-**⚠️ IMPORTANT: Before running this migration:**
-1. **Back up your database** (Supabase has automatic backups, but you may want to export data)
-2. **Review your data** - Make sure you understand what data will be migrated
-3. Run this in a **new SQL editor tab** in Supabase
-
-```sql
--- Step 1: Add new columns to price_tracking if they don't exist
--- (This must be done BEFORE migrating data)
-ALTER TABLE price_tracking 
-ADD COLUMN IF NOT EXISTS latest_price NUMERIC,
-ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD',
-ADD COLUMN IF NOT EXISTS airlines TEXT[],
-ADD COLUMN IF NOT EXISTS flight_details JSONB;
-
--- Step 2: Migrate latest search results from flight_search_results to price_tracking
--- This preserves the most recent search result for each search_request
--- Only runs if flight_search_results table exists
-DO $$
-BEGIN
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'flight_search_results') THEN
-        UPDATE price_tracking pt
-        SET 
-            latest_price = fsr.price,
-            currency = COALESCE(fsr.currency, 'USD'),
-            airlines = fsr.airlines,
-            flight_details = fsr.flight_details
-        FROM (
-            SELECT DISTINCT ON (search_request_id) 
-                search_request_id,
-                price,
-                currency,
-                airlines,
-                flight_details
-            FROM flight_search_results
-            ORDER BY search_request_id, searched_at DESC
-        ) fsr
-        WHERE pt.search_request_id = fsr.search_request_id;
-    END IF;
-END $$;
-
--- Step 3: Drop redundant tables (after migration is complete)
--- WARNING: This will permanently delete data from these tables
--- Make sure you've migrated any important data first
-DROP TABLE IF EXISTS flight_search_results CASCADE;
-DROP TABLE IF EXISTS price_history CASCADE;
-DROP TABLE IF EXISTS user_searches CASCADE;
+```bash
+python run.py
 ```
 
-### 7. Migration: Add flight link to price_tracking
+The app will start in debug mode and be available at `http://localhost:5000`.
 
-Add a dedicated column for the outbound URL of the cheapest flight returned by SerpApi. This preserves the link even if the raw flight_details JSON changes.
-
-```sql
-ALTER TABLE price_tracking
-ADD COLUMN IF NOT EXISTS flight_link TEXT;
-```
-
-**Warning:** The migration script above will delete the `flight_search_results`, `price_history`, and `user_searches` tables. Make sure you've reviewed and migrated any important data before running it.
-
-### 6. Run the Application
+If you prefer using the Flask CLI, you can instead set `FLASK_APP=run.py` and run:
 
 ```bash
 flask run
 ```
 
-Or with auto-reload:
+---
+
+## Project structure
 
 ```bash
-flask run --debug
-```
-
-The application will be available at `http://localhost:5000`
-
-## Project Structure
-
-```
 FlightTrack/
 ├── app/
-│   ├── __init__.py          # Flask app factory
-│   ├── models.py             # Database models
-│   ├── auth.py               # Authentication routes
-│   ├── dashboard.py          # Dashboard routes
-│   ├── database.py           # Supabase connection
-│   ├── forms.py              # WTForms
-│   └── templates/            # HTML templates
+│   ├── __init__.py       # Flask app factory and config
+│   ├── auth.py           # Authentication routes (signup/login)
+│   ├── dashboard.py      # Dashboard and search request management
+│   ├── database.py       # Supabase client helpers and CRUD
+│   ├── models.py         # Simple Python models for DB rows
+│   ├── forms.py          # WTForms definitions
+│   ├── serpapi_service.py# SerpApi integration and result parsing
+│   ├── email_service.py  # Email sending helpers
+│   └── templates/        # HTML templates
+├── scripts/
+│   └── check_flights.py  # Script for scheduled/daily flight checks
+├── .github/
+│   └── workflows/
+│       └── daily-flight-check.yml  # Example GitHub Actions workflow
 ├── requirements.txt
-├── .env.example
-├── .gitignore
+├── run.py
 └── README.md
 ```
 
-## Features
+---
 
-- User authentication (sign up, log in, log out)
-- Create flight search requests with preferences (airlines, dates, passengers)
-- View all search requests in a dashboard
-- Edit existing requests
-- Delete requests
-- Automatic price tracking initialization
-- Search for cheapest flights using SerpAPI Google Flights API
-- Consolidated price tracking with latest search results
-- Track minimum prices seen over time
+## Database schema overview
 
-## Database Schema
+The live schema used by the application is:
 
-The application uses a simplified three-table schema:
+- **`users`**: Stores user accounts
+  - `id` (UUID, primary key)
+  - `email` (unique)
+  - `password_hash`
+  - `created_at`
 
-1. **`users`**: Stores user account information (email, password hash)
-2. **`search_requests`**: Stores user flight search configurations (route, dates, passengers, preferred airlines)
-3. **`price_tracking`**: Consolidated table that tracks:
-   - Minimum price seen (`minimum_price`)
-   - Latest search result details (`latest_price`, `currency`, `airlines`, `flight_details`)
-   - Tracking metadata (`last_checked`, `last_notified_price`)
+- **`search_requests`**: Stores each flight search configuration
+  - `id` (UUID, primary key)
+  - `user_id` (FK → `users.id`, cascade on delete)
+  - `depart_from`, `arrive_at` (airport codes)
+  - `departure_date`, `return_date` (optional)
+  - `trip_type` (`one_way` or `round_trip`)
+  - `preferred_airlines` (TEXT[])
+  - `stops` (integer preference: 0 any, 1 nonstop, 2 one stop or fewer, 3 two stops or fewer)
+  - `created_at`
 
-This consolidated approach eliminates redundancy while maintaining all necessary functionality for price tracking.
+- **`price_tracking`**: Consolidates tracking state and latest search result
+  - `id` (UUID, primary key)
+  - `search_request_id` (FK → `search_requests.id`, cascade on delete)
+  - `minimum_price` (best price seen so far)
+  - `last_checked` (timestamp of last search)
+  - `last_notified_price` (last price that triggered an email)
+  - `latest_price`, `currency`, `airlines`, `flight_details` (JSON snapshot of last result)
+  - `flight_link` (direct link to the cheapest flight from the last search)
 
+This three-table design keeps the schema small while still letting the app show the latest deal and track historical best prices for every saved search.
