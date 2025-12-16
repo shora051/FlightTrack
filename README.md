@@ -50,11 +50,6 @@ SECRET_KEY=a_secure_random_string
 # Email (Gmail)
 GMAIL_USER=your_gmail_address
 GMAIL_APP_PASSWORD=your_gmail_app_password
-
-# Optional overrides
-GMAIL_SMTP_SERVER=smtp.gmail.com
-GMAIL_SMTP_PORT=587
-GMAIL_FROM_EMAIL=address_used_in_from_header
 ```
 
 - **`GMAIL_USER` / `GMAIL_APP_PASSWORD`** must correspond to a Gmail account with 2FA enabled and an App Password generated in **Google Account → Security → App passwords**.
