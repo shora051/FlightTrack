@@ -229,15 +229,6 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <form method="POST" action="{{ url_for('dashboard.search_flights_for_request', request_id=req.id) }}" 
-                                              class="d-inline" 
-                                              id="searchForm{{ req.id }}">
-                                            <button type="submit" class="btn btn-sm btn-success mb-1" 
-                                                    onclick="this.disabled=true; this.innerHTML='<i class=\'bi bi-hourglass-split\'></i> Searching...'; this.form.submit();">
-                                                <i class="bi bi-search"></i> Search Flights
-                                            </button>
-                                        </form>
-                                        <br>
                                         <a href="{{ url_for('dashboard.edit', request_id=req.id) }}" 
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Edit

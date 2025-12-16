@@ -53,6 +53,44 @@ def create():
         
         if search_request:
             flash('Search request created successfully!', FLASH_SUCCESS)
+            
+            # Automatically search flights after creating the request
+            try:
+                search_result = search_flights(
+                    depart_from=search_request['depart_from'],
+                    arrive_at=search_request['arrive_at'],
+                    departure_date=search_request['departure_date'],
+                    return_date=search_request.get('return_date'),
+                    preferred_airlines=search_request.get('preferred_airlines'),
+                    stops=search_request.get('stops', 0)
+                )
+                
+                if search_result and search_result.get('success'):
+                    cheapest_flight = search_result.get('cheapest_flight')
+                    price = get_cheapest_price_from_flight(cheapest_flight)
+                    
+                    if price:
+                        # Update price tracking with search result
+                        update_price_tracking_with_result(
+                            search_request_id=search_request['id'],
+                            price=price,
+                            currency=cheapest_flight.get('currency', 'USD'),
+                            airlines=cheapest_flight.get('airlines', []),
+                            flight_details=cheapest_flight,
+                            flight_link=cheapest_flight.get('link')
+                        )
+                        
+                        currency = cheapest_flight.get('currency', 'USD')
+                        flash(f'Flight search completed! Cheapest flight found: ${price:.2f} {currency}', FLASH_SUCCESS)
+                    else:
+                        flash('Flight search completed but no flights were found.', FLASH_WARNING)
+                else:
+                    error_msg = search_result.get('error', 'Unknown error') if search_result else 'No response from API'
+                    flash(f'Flight search failed: {error_msg}', FLASH_WARNING)
+            
+            except Exception as e:
+                print(f"Error searching flights after creation: {e}")
+                flash(f'Request created but search failed: {str(e)}', FLASH_WARNING)
         else:
             flash('An error occurred while creating the request.', FLASH_DANGER)
     else:
