@@ -145,6 +145,28 @@ def get_user_search_requests_with_tracking(user_id: str) -> List[Dict]:
         print(f"Error getting search requests with tracking: {e}")
         return []
 
+def get_all_active_search_requests() -> List[Dict]:
+    """
+    Get all search requests with future departure dates.
+    Used by automated scripts to check flights for all active requests.
+    
+    Returns:
+        List of search request dictionaries with departure_date >= today
+    """
+    supabase = get_supabase_client()
+    try:
+        from datetime import date
+        
+        today = date.today().isoformat()
+        
+        # Get all search requests where departure_date >= today
+        result = supabase.table('search_requests').select('*').gte('departure_date', today).order('departure_date', desc=False).execute()
+        
+        return result.data if result.data else []
+    except Exception as e:
+        print(f"Error getting all active search requests: {e}")
+        return []
+
 def get_search_request_by_id(request_id: str, user_id: str) -> Optional[Dict]:
     """Get a specific search request by ID (with user validation)"""
     supabase = get_supabase_client()
