@@ -65,6 +65,20 @@ def get_user_by_email(email: str) -> Optional[Dict]:
         print(f"Error getting user: {e}")
         return None
 
+
+def get_user_by_id(user_id: str) -> Optional[Dict]:
+    """Get user by ID"""
+    supabase = get_supabase_client()
+    try:
+        result = supabase.table('users').select('*').eq('id', user_id).execute()
+
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"Error getting user by id: {e}")
+        return None
+
 def create_search_request(user_id: str, depart_from: str, arrive_at: str, 
                          departure_date: str, return_date: Optional[str],
                          trip_type: str, 
@@ -328,5 +342,29 @@ def update_price_tracking_with_result(search_request_id: str, price: Optional[fl
         return None
     except Exception as e:
         print(f"Error updating price tracking with result: {e}")
+        return None
+
+
+def mark_price_notified(search_request_id: str, notified_price: Optional[float]) -> Optional[Dict]:
+    """
+    Record the last price we sent an alert for.
+    This relies on the existing last_notified_price column in price_tracking.
+    """
+    if notified_price is None:
+        return None
+
+    supabase = get_supabase_client()
+    try:
+        update_data = {
+            'last_notified_price': float(notified_price),
+        }
+
+        result = supabase.table('price_tracking').update(update_data).eq('search_request_id', search_request_id).execute()
+
+        if result.data:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"Error marking price as notified: {e}")
         return None
 

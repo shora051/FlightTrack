@@ -15,9 +15,16 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
-from app.database import get_all_active_search_requests, update_price_tracking_with_result
+from app.database import (
+    get_all_active_search_requests,
+    update_price_tracking_with_result,
+    get_price_tracking,
+    get_user_by_id,
+    mark_price_notified,
+)
 from app.serpapi_service import search_flights
-from app.utils import get_cheapest_price_from_flight
+from app.utils import get_cheapest_price_from_flight, should_send_price_alert
+from app.email_service import send_price_drop_email
 
 def check_all_flights():
     """
@@ -80,6 +87,57 @@ def check_all_flights():
                         currency = cheapest_flight.get('currency', 'USD')
                         print(f"  ✓ Success: Found cheapest flight at ${price:.2f} {currency}")
                         success_count += 1
+
+                        # After updating tracking, decide if we should send a price-drop alert
+                        try:
+                            tracking = get_price_tracking(request_id)
+                            user = get_user_by_id(request.get('user_id')) if request.get('user_id') else None
+
+                            if tracking and user:
+                                latest_price = tracking.get('latest_price')
+                                minimum_price = tracking.get('minimum_price')
+                                last_notified_price = tracking.get('last_notified_price')
+
+                                if should_send_price_alert(latest_price, minimum_price, last_notified_price):
+                                    to_email = user.get('email')
+                                    if to_email:
+                                        dry_run = os.getenv("PRICE_ALERT_DRY_RUN", "false").lower() in (
+                                            "1",
+                                            "true",
+                                            "yes",
+                                        )
+
+                                        flight_link = tracking.get('flight_link')
+                                        subject = "Cheaper flight found for your tracked route"
+                                        html_body = f"""
+                                        <html>
+                                            <body>
+                                                <p>Good news!</p>
+                                                <p>We found a cheaper flight for your tracked route
+                                                {depart_from} → {arrive_at} on {departure_date}.</p>
+                                                <p>
+                                                    Latest price: <strong>${float(latest_price):.2f} {currency}</strong><br/>
+                                                    Previous best: <strong>${float(minimum_price) if minimum_price is not None else 'N/A'}</strong>
+                                                </p>
+                                                {'<p><a href="' + flight_link + '">Book this flight</a></p>' if flight_link else ''}
+                                                <p>Prices can change at any time, so if this works for you, consider booking soon.</p>
+                                            </body>
+                                        </html>
+                                        """
+
+                                        send_price_drop_email(
+                                            to_email=to_email,
+                                            subject=subject,
+                                            html_body=html_body,
+                                            dry_run=dry_run,
+                                        )
+
+                                        if not dry_run:
+                                            mark_price_notified(request_id, latest_price)
+                                    else:
+                                        print("  Skipping alert: user has no email on file.")
+                        except Exception as alert_error:
+                            print(f"  Warning: error while processing price-drop alert logic: {alert_error}")
                     else:
                         error_msg = "Flight search completed but no price found"
                         print(f"  ✗ Warning: {error_msg}")

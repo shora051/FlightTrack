@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from flask import flash
 
+
 def format_flash_errors(form_errors: Dict, form=None) -> None:
     """
     Format and flash form validation errors
@@ -82,3 +83,33 @@ def get_cheapest_price_from_flight(flight_data: Optional[Dict]) -> Optional[floa
     elif isinstance(price_info, (int, float)):
         return float(price_info)
     return None
+
+
+def should_send_price_alert(
+    latest_price: Optional[float],
+    minimum_price: Optional[float],
+    last_notified_price: Optional[float],
+) -> bool:
+    """
+    Decide whether a price-drop alert should be sent.
+
+    The logic is:
+    - If we have a last_notified_price, only alert when the new latest_price is lower.
+    - Otherwise, fall back to using the historical minimum_price as a baseline and alert
+      only when the new latest_price is lower than that baseline.
+    - If we are missing prices or cannot safely compare, do not alert.
+    """
+    if latest_price is None:
+        return False
+
+    baseline = last_notified_price if last_notified_price is not None else minimum_price
+    if baseline is None:
+        return False
+
+    try:
+        latest = float(latest_price)
+        base = float(baseline)
+    except (TypeError, ValueError):
+        return False
+
+    return latest < base

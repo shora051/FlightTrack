@@ -33,6 +33,10 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          # Set to "true" to log what would be sent instead of actually emailing
+          PRICE_ALERT_DRY_RUN: ${{ secrets.PRICE_ALERT_DRY_RUN }}
         run: |
           python scripts/check_flights.py
       
