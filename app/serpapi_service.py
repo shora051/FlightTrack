@@ -89,7 +89,8 @@ def convert_airline_names_to_codes(airline_names: List[str]) -> Tuple[List[str],
 
 def search_flights(depart_from: str, arrive_at: str, departure_date: str,
                    return_date: Optional[str] = None, passengers: int = 1,
-                   preferred_airlines: Optional[List[str]] = None) -> Optional[Dict]:
+                   preferred_airlines: Optional[List[str]] = None,
+                   stops: int = 0) -> Optional[Dict]:
     """
     Search for flights using SerpAPI Google Flights API
     
@@ -100,6 +101,7 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
         return_date: Return date in YYYY-MM-DD format (optional)
         passengers: Number of passengers (default: 1)
         preferred_airlines: List of preferred airline names (optional)
+        stops: Number of stops preference (0=any, 1=nonstop, 2=1 stop or fewer, 3=2 stops or fewer, default: 0)
     
     Returns:
         Dictionary containing flight search results, or None if error
@@ -138,6 +140,11 @@ def search_flights(depart_from: str, arrive_at: str, departure_date: str,
         if invalid_airlines:
             # Log invalid entries for debugging; do not send them to SerpApi
             print(f"Skipped invalid airline entries for SerpApi include_airlines: {invalid_airlines}")
+    
+    # Add stops parameter if provided (0=any, 1=nonstop, 2=1 stop or fewer, 3=2 stops or fewer)
+    # Only add if stops is not 0 (default), as 0 means "any number of stops" which is the API default
+    if stops and stops > 0:
+        params['stops'] = stops
     
     try:
         # Make API request

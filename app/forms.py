@@ -129,6 +129,14 @@ class SearchRequestForm(FlaskForm):
     passengers = IntegerField('Passengers', validators=[DataRequired(), NumberRange(min=1, max=9)])
     trip_type = RadioField('Trip Type', choices=[('one_way', 'One Way'), ('round_trip', 'Round Trip')],
                           validators=[DataRequired()], default='round_trip')
+    stops = SelectField('Number of Stops', 
+                       choices=[(0, 'Any number of stops (default)'), 
+                               (1, 'Nonstop only'), 
+                               (2, '1 stop or fewer'), 
+                               (3, '2 stops or fewer')],
+                       validators=[Optional()], 
+                       default=0,
+                       coerce=int)
     preferred_airlines = SelectMultipleField('Preferred Airlines', choices=AIRLINES,
                                             validators=[Optional()])
     

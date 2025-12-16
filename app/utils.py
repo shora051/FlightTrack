@@ -42,7 +42,8 @@ def prepare_search_request_data(form_data: Dict) -> Dict[str, Any]:
         'return_date': return_date,
         'passengers': form_data.get('passengers'),
         'trip_type': form_data.get('trip_type'),
-        'preferred_airlines': form_data.get('preferred_airlines') if form_data.get('preferred_airlines') else None
+        'preferred_airlines': form_data.get('preferred_airlines') if form_data.get('preferred_airlines') else None,
+        'stops': form_data.get('stops', 0)
     }
 
 def populate_form_from_search_request(form, search_request: Dict) -> None:
@@ -60,6 +61,7 @@ def populate_form_from_search_request(form, search_request: Dict) -> None:
         form.return_date.data = datetime.fromisoformat(search_request['return_date']).date()
     form.passengers.data = search_request.get('passengers')
     form.trip_type.data = search_request.get('trip_type')
+    form.stops.data = search_request.get('stops', 0)
     if search_request.get('preferred_airlines'):
         form.preferred_airlines.data = search_request['preferred_airlines']
 

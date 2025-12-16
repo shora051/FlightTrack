@@ -28,7 +28,7 @@ class SearchRequest:
     def __init__(self, id: str, user_id: str, depart_from: str, arrive_at: str,
                  departure_date: str, return_date: Optional[str], passengers: int,
                  trip_type: str, preferred_airlines: Optional[List[str]],
-                 created_at: Optional[str] = None):
+                 stops: int = 0, created_at: Optional[str] = None):
         self.id = id
         self.user_id = user_id
         self.depart_from = depart_from
@@ -38,6 +38,7 @@ class SearchRequest:
         self.passengers = passengers
         self.trip_type = trip_type
         self.preferred_airlines = preferred_airlines or []
+        self.stops = stops
         self.created_at = created_at
     
     @classmethod
@@ -53,6 +54,7 @@ class SearchRequest:
             passengers=data['passengers'],
             trip_type=data['trip_type'],
             preferred_airlines=data.get('preferred_airlines'),
+            stops=data.get('stops', 0),
             created_at=data.get('created_at')
         )
     
@@ -68,6 +70,7 @@ class SearchRequest:
             'passengers': self.passengers,
             'trip_type': self.trip_type,
             'preferred_airlines': self.preferred_airlines,
+            'stops': self.stops,
             'created_at': self.created_at
         }
 

@@ -68,7 +68,8 @@ def get_user_by_email(email: str) -> Optional[Dict]:
 def create_search_request(user_id: str, depart_from: str, arrive_at: str, 
                          departure_date: str, return_date: Optional[str],
                          passengers: int, trip_type: str, 
-                         preferred_airlines: Optional[List[str]]) -> Optional[Dict]:
+                         preferred_airlines: Optional[List[str]],
+                         stops: int = 0) -> Optional[Dict]:
     """Create a new search request"""
     supabase = get_supabase_client()
     try:
@@ -80,7 +81,8 @@ def create_search_request(user_id: str, depart_from: str, arrive_at: str,
             'return_date': return_date,
             'passengers': passengers,
             'trip_type': trip_type,
-            'preferred_airlines': preferred_airlines
+            'preferred_airlines': preferred_airlines,
+            'stops': stops
         }
         
         result = supabase.table('search_requests').insert(data).execute()

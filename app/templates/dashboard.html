@@ -89,7 +89,7 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             {{ form.trip_type.label(class="form-label") }}
                             <div>
                                 {% for subfield in form.trip_type %}
@@ -108,7 +108,19 @@
                             {% endif %}
                         </div>
                         
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
+                            {{ form.stops.label(class="form-label") }}
+                            {{ form.stops(class="form-select" + (" is-invalid" if form.stops.errors else "")) }}
+                            {% if form.stops.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.stops.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
                             {{ form.preferred_airlines.label(class="form-label") }}
                             {{ form.preferred_airlines(class="form-select" + (" is-invalid" if form.preferred_airlines.errors else ""), size="5", multiple=True) }}
                             <small class="form-text text-muted">Hold Ctrl (Cmd on Mac) to select multiple airlines</small>
@@ -152,6 +164,7 @@
                                     <th>Dates</th>
                                     <th>Passengers</th>
                                     <th>Trip Type</th>
+                                    <th>Stops</th>
                                     <th>Preferred Airlines</th>
                                     <th>Cheapest Price</th>
                                     <th>Last Search</th>
@@ -177,6 +190,19 @@
                                         <span class="badge bg-info">
                                             {{ 'Round Trip' if req.trip_type == 'round_trip' else 'One Way' }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        {% if req.stops == 0 %}
+                                            <span class="badge bg-secondary">Any stops</span>
+                                        {% elif req.stops == 1 %}
+                                            <span class="badge bg-success">Nonstop only</span>
+                                        {% elif req.stops == 2 %}
+                                            <span class="badge bg-warning">1 stop or fewer</span>
+                                        {% elif req.stops == 3 %}
+                                            <span class="badge bg-warning">2 stops or fewer</span>
+                                        {% else %}
+                                            <span class="text-muted">Any stops</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if req.preferred_airlines %}
