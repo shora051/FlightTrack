@@ -13,10 +13,14 @@ def create_app():
     app.config['SUPABASE_URL'] = os.getenv('SUPABASE_URL')
     app.config['SUPABASE_KEY'] = os.getenv('SUPABASE_KEY')
     app.config['SERPAPI_KEY'] = os.getenv('SERPAPI_KEY')
-    app.config['MAILGUN_API_KEY'] = os.getenv('MAILGUN_API_KEY')
-    app.config['MAILGUN_DOMAIN'] = os.getenv('MAILGUN_DOMAIN')
-    app.config['MAILGUN_FROM_EMAIL'] = os.getenv('MAILGUN_FROM_EMAIL')
-    app.config['MAILGUN_BASE_URL'] = os.getenv('MAILGUN_BASE_URL', 'https://api.mailgun.net/v3')
+
+    # Gmail SMTP configuration
+    app.config['GMAIL_SMTP_SERVER'] = os.getenv('GMAIL_SMTP_SERVER', 'smtp.gmail.com')
+    app.config['GMAIL_SMTP_PORT'] = int(os.getenv('GMAIL_SMTP_PORT', '587'))
+    # Prefer GMAIL_USER, fall back to GMAIL_USERNAME for backwards compatibility
+    app.config['GMAIL_USERNAME'] = os.getenv('GMAIL_USER') or os.getenv('GMAIL_USERNAME')
+    app.config['GMAIL_APP_PASSWORD'] = os.getenv('GMAIL_APP_PASSWORD')
+    app.config['GMAIL_FROM_EMAIL'] = os.getenv('GMAIL_FROM_EMAIL', app.config['GMAIL_USERNAME'])
     
     # Register blueprints
     from app.auth import auth_bp

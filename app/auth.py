@@ -3,7 +3,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.forms import SignupForm, LoginForm
 from app.database import create_user, get_user_by_email
-from app.mail import send_mailgun_email
+from app.mail import send_email
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -20,7 +20,7 @@ def _generate_verification_token(user: dict) -> str:
 
 
 def _send_verification_email(user: dict) -> bool:
-    """Send verification email to user via Mailgun."""
+    """Send verification email to user."""
     token = _generate_verification_token(user)
     verify_url = url_for('auth.verify', token=token, _external=True)
     subject = "Verify your FlightTrack email"
@@ -35,7 +35,7 @@ def _send_verification_email(user: dict) -> bool:
         f"<p><a href=\"{verify_url}\">{verify_url}</a></p>"
         f"<p>This link will expire in 24 hours.</p>"
     )
-    sent_ok = send_mailgun_email(user['email'], subject, text, html)
+    sent_ok = send_email(user['email'], subject, text, html)
     return sent_ok
 
 

@@ -41,6 +41,16 @@ Edit `.env` with your actual values:
 - `SUPABASE_KEY`: Your Supabase anon key
 - `SERPAPI_KEY`: Your SerpApi key
 - `SECRET_KEY`: Generate a secure random key for Flask sessions
+- `GMAIL_SMTP_SERVER` (optional): Gmail SMTP server, defaults to `smtp.gmail.com`
+- `GMAIL_SMTP_PORT` (optional): SMTP port, defaults to `587`
+- `GMAIL_USER`: Your Gmail address used to send emails
+- `GMAIL_APP_PASSWORD`: The 16-character App Password generated in your Google Account
+- `GMAIL_FROM_EMAIL` (optional): From address, defaults to `GMAIL_USER`
+
+To create a Gmail App Password:
+1. Enable 2-Step Verification for your Google account.
+2. In your Google Account under **Security → App passwords**, create a new App Password for \"Mail\".
+3. Use the generated 16-character password as `GMAIL_APP_PASSWORD` in your `.env`.
 
 ### 5. Database Setup
 

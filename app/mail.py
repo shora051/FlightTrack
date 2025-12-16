@@ -1,42 +1,43 @@
 """
-Mail utilities for sending transactional emails via Mailgun.
+Mail utilities for sending transactional emails via Gmail SMTP.
 """
-import requests
+from email.message import EmailMessage
+import smtplib
+
 from flask import current_app
 
 
-def send_mailgun_email(to: str, subject: str, text: str, html: str | None = None) -> bool:
+def send_email(to: str, subject: str, text: str, html: str | None = None) -> bool:
     """
-    Send an email through Mailgun.
+    Send an email using Gmail SMTP.
 
     Returns True on success, False otherwise.
     """
-    api_key = current_app.config.get('MAILGUN_API_KEY')
-    domain = current_app.config.get('MAILGUN_DOMAIN')
-    from_email = current_app.config.get('MAILGUN_FROM_EMAIL')
-    base_url = current_app.config.get('MAILGUN_BASE_URL', 'https://api.mailgun.net/v3')
+    smtp_server = current_app.config.get('GMAIL_SMTP_SERVER', 'smtp.gmail.com')
+    smtp_port = current_app.config.get('GMAIL_SMTP_PORT', 587)
+    username = current_app.config.get('GMAIL_USERNAME')
+    app_password = current_app.config.get('GMAIL_APP_PASSWORD')
+    from_email = current_app.config.get('GMAIL_FROM_EMAIL', username)
 
-    if not api_key or not domain or not from_email:
-        print("Mailgun configuration missing; cannot send email.")
+    if not username or not app_password or not from_email:
+        print("Gmail configuration missing; cannot send email.")
         return False
 
-    url = f"{base_url}/{domain}/messages"
-    data = {
-        "from": from_email,
-        "to": [to],
-        "subject": subject,
-        "text": text,
-    }
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = from_email
+    msg['To'] = to
+    msg.set_content(text or "")
+
     if html:
-        data["html"] = html
+        msg.add_alternative(html, subtype='html')
 
     try:
-        response = requests.post(url, auth=("api", api_key), data=data, timeout=10)
-        if response.status_code == 200:
-            return True
-        print(f"Mailgun send failed ({response.status_code}): {response.text}")
-        return False
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+            server.starttls()
+            server.login(username, app_password)
+            server.send_message(msg)
+        return True
     except Exception as exc:  # noqa: BLE001
-        print(f"Error sending Mailgun email: {exc}")
+        print(f"Error sending Gmail email: {exc}")
         return False
-
