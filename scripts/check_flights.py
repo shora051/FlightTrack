@@ -74,6 +74,11 @@ def check_all_flights():
                     price = get_cheapest_price_from_flight(cheapest_flight)
                     
                     if price:
+                        # Get OLD tracking data BEFORE updating (to compare against previous minimum)
+                        old_tracking = get_price_tracking(request_id)
+                        old_minimum_price = old_tracking.get('minimum_price') if old_tracking else None
+                        old_last_notified_price = old_tracking.get('last_notified_price') if old_tracking else None
+                        
                         # Update price tracking with search result
                         update_price_tracking_with_result(
                             search_request_id=request_id,
@@ -89,23 +94,31 @@ def check_all_flights():
                         success_count += 1
 
                         # After updating tracking, decide if we should send a price-drop alert
+                        # Use OLD minimum_price for comparison (before it was updated to the new lower price)
                         try:
                             tracking = get_price_tracking(request_id)
                             user = get_user_by_id(request.get('user_id')) if request.get('user_id') else None
 
                             if tracking and user:
                                 latest_price = tracking.get('latest_price')
-                                minimum_price = tracking.get('minimum_price')
-                                last_notified_price = tracking.get('last_notified_price')
+                                # Use old_minimum_price for comparison, not the newly updated one
+                                minimum_price = old_minimum_price
+                                last_notified_price = old_last_notified_price
+
+                                # Debug logging
+                                print(f"  → Price alert check: latest=${latest_price:.2f}, old_minimum=${minimum_price:.2f if minimum_price else 'None'}, last_notified=${last_notified_price:.2f if last_notified_price else 'None'}")
 
                                 if should_send_price_alert(latest_price, minimum_price, last_notified_price):
+                                    print(f"  ✓ Price alert should be sent!")
                                     to_email = user.get('email')
                                     if to_email:
-                                        dry_run = os.getenv("PRICE_ALERT_DRY_RUN", "false").lower() in (
+                                        dry_run_env = os.getenv("PRICE_ALERT_DRY_RUN", "false")
+                                        dry_run = dry_run_env.lower().strip() in (
                                             "1",
                                             "true",
                                             "yes",
                                         )
+                                        print(f"  → PRICE_ALERT_DRY_RUN env var: '{dry_run_env}' → dry_run={dry_run}")
 
                                         flight_link = tracking.get('flight_link')
                                         baseline = last_notified_price if last_notified_price is not None else minimum_price
