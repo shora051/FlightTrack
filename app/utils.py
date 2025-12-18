@@ -104,12 +104,21 @@ def should_send_price_alert(
 
     baseline = last_notified_price if last_notified_price is not None else minimum_price
     if baseline is None:
+        # No baseline available - this is likely the first check or data is incomplete
         return False
 
     try:
         latest = float(latest_price)
         base = float(baseline)
-    except (TypeError, ValueError):
+        
+        # Ensure we have valid positive numbers
+        if latest <= 0 or base <= 0:
+            return False
+            
+    except (TypeError, ValueError) as e:
+        # Log conversion errors for debugging
         return False
 
-    return latest < base
+    # Only alert if the new price is strictly lower than the baseline
+    # Using a small threshold (0.01) to account for floating point precision
+    return latest < (base - 0.01)

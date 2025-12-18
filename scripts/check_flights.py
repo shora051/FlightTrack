@@ -108,6 +108,7 @@ def check_all_flights():
                                         )
 
                                         flight_link = tracking.get('flight_link')
+                                        baseline = last_notified_price if last_notified_price is not None else minimum_price
                                         subject = "Cheaper flight found for your tracked route"
                                         html_body = f"""
                                         <html>
@@ -117,7 +118,7 @@ def check_all_flights():
                                                 {depart_from} → {arrive_at} on {departure_date}.</p>
                                                 <p>
                                                     Latest price: <strong>${float(latest_price):.2f} {currency}</strong><br/>
-                                                    Previous best: <strong>${float(minimum_price) if minimum_price is not None else 'N/A'}</strong>
+                                                    Previous best: <strong>${float(baseline):.2f} {currency}</strong>
                                                 </p>
                                                 {'<p><a href="' + flight_link + '">Book this flight</a></p>' if flight_link else ''}
                                                 <p>Prices can change at any time, so if this works for you, consider booking soon.</p>
@@ -125,17 +126,31 @@ def check_all_flights():
                                         </html>
                                         """
 
-                                        send_price_drop_email(
+                                        print(f"  → Sending price alert email to {to_email} (dry_run={dry_run})")
+                                        email_sent = send_price_drop_email(
                                             to_email=to_email,
                                             subject=subject,
                                             html_body=html_body,
                                             dry_run=dry_run,
                                         )
 
-                                        if not dry_run:
+                                        if email_sent and not dry_run:
                                             mark_price_notified(request_id, latest_price)
+                                            print(f"  ✓ Price alert notification recorded in database")
+                                        elif not email_sent:
+                                            print(f"  ✗ WARNING: Failed to send price alert email to {to_email}")
                                     else:
-                                        print("  Skipping alert: user has no email on file.")
+                                        print("  ✗ Skipping alert: user has no email on file.")
+                                else:
+                                    # Log why alert wasn't sent for debugging
+                                    if latest_price is None:
+                                        print(f"  → No alert: latest_price is None")
+                                    elif minimum_price is None and last_notified_price is None:
+                                        print(f"  → No alert: No baseline price available (minimum_price={minimum_price}, last_notified_price={last_notified_price})")
+                                    else:
+                                        baseline = last_notified_price if last_notified_price is not None else minimum_price
+                                        if latest_price >= baseline:
+                                            print(f"  → No alert: Latest price ${latest_price:.2f} is not lower than baseline ${baseline:.2f}")
                         except Exception as alert_error:
                             print(f"  Warning: error while processing price-drop alert logic: {alert_error}")
                     else:

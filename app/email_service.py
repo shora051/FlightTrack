@@ -22,20 +22,24 @@ def _get_gmail_credentials() -> Optional[tuple[str, str]]:
     return user, app_password
 
 
-def send_price_drop_email(to_email: str, subject: str, html_body: str, dry_run: bool = False) -> None:
+def send_price_drop_email(to_email: str, subject: str, html_body: str, dry_run: bool = False) -> bool:
     """
     Send a price-drop email via Gmail SMTP.
 
     If dry_run is True, this will only log what would be sent.
+    
+    Returns:
+        True if email was sent successfully (or dry_run), False otherwise
     """
     if dry_run:
         print(f"[DRY RUN] Would send price-drop email to {to_email} with subject '{subject}'.")
-        return
+        return True
 
     creds = _get_gmail_credentials()
     if creds is None:
         # Already logged a helpful message
-        return
+        print(f"ERROR: Cannot send price-drop email to {to_email} - Gmail credentials missing")
+        return False
 
     user, app_password = creds
 
@@ -45,11 +49,22 @@ def send_price_drop_email(to_email: str, subject: str, html_body: str, dry_run: 
     msg["To"] = to_email
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
             server.starttls()
             server.login(user, app_password)
             server.send_message(msg)
-        print(f"Sent price-drop email to {to_email}")
+        print(f"✓ Successfully sent price-drop email to {to_email}")
+        return True
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"✗ ERROR: SMTP Authentication failed when sending to {to_email}: {e}")
+        print(f"  Check that GMAIL_USER and GMAIL_APP_PASSWORD are correct")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"✗ ERROR: SMTP error when sending to {to_email}: {e}")
+        return False
     except Exception as e:
-        print(f"Error sending email via Gmail SMTP: {e}")
+        print(f"✗ ERROR: Unexpected error sending email to {to_email}: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
