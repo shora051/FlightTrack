@@ -106,7 +106,9 @@ def check_all_flights():
                                 last_notified_price = old_last_notified_price
 
                                 # Debug logging
-                                print(f"  → Price alert check: latest=${latest_price:.2f}, old_minimum=${minimum_price:.2f if minimum_price else 'None'}, last_notified=${last_notified_price:.2f if last_notified_price else 'None'}")
+                                old_min_str = f"${minimum_price:.2f}" if minimum_price is not None else "None"
+                                last_notified_str = f"${last_notified_price:.2f}" if last_notified_price is not None else "None"
+                                print(f"  → Price alert check: latest=${latest_price:.2f}, old_minimum={old_min_str}, last_notified={last_notified_str}")
 
                                 if should_send_price_alert(latest_price, minimum_price, last_notified_price):
                                     print(f"  ✓ Price alert should be sent!")
