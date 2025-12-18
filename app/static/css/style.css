@@ -503,3 +503,247 @@ select[multiple] option:checked {
     background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
     color: var(--text-light);
 }
+
+/* Dashboard Specific Styles */
+.dashboard-header {
+    padding: 2rem 0 1rem;
+}
+
+.dashboard-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.request-count-badge .badge {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Create Request Section */
+.create-request-section .card-header-modern {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    padding: 1.5rem 2rem;
+    border-radius: 12px 12px 0 0;
+}
+
+.create-request-section .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+
+.create-request-section .card-header-modern h4 {
+    color: var(--text-light);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.create-request-section .card-header-modern small {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+}
+
+.form-section {
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.section-title {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.trip-type-buttons .form-check {
+    background: var(--bg-tertiary);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+    transition: all 0.2s ease;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.trip-type-buttons .form-check-input:checked ~ .form-check-label {
+    color: var(--text-light);
+}
+
+.trip-type-buttons .form-check-input:checked ~ .form-check {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+/* Request Cards */
+.requests-section {
+    margin-top: 3rem;
+}
+
+.section-header {
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.section-header h2 {
+    color: var(--text-light);
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.request-card {
+    transition: all 0.3s ease;
+    background: var(--bg-card);
+    border-left: 4px solid var(--accent-primary) !important;
+}
+
+.request-card:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow-lg) !important;
+    border-left-color: var(--accent-secondary) !important;
+}
+
+.route-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+}
+
+.departure-city,
+.arrival-city {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.city-code {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    letter-spacing: 1px;
+}
+
+.city-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.route-arrow {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+}
+
+.preferences-section {
+    padding: 0.5rem 0;
+}
+
+.preference-item {
+    padding-bottom: 0.75rem;
+}
+
+.preference-item:last-child {
+    padding-bottom: 0;
+}
+
+.airline-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.price-section {
+    padding: 0.5rem 0;
+}
+
+.price-display {
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.price-value {
+    font-weight: 700;
+}
+
+.empty-state {
+    background: var(--bg-card);
+    border-radius: 12px;
+}
+
+.empty-state .empty-icon {
+    opacity: 0.5;
+}
+
+.action-buttons .btn {
+    white-space: nowrap;
+}
+
+/* Form Controls */
+.form-select-lg,
+.form-control-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+/* Responsive adjustments for dashboard */
+@media (max-width: 992px) {
+    .route-display {
+        justify-content: center;
+    }
+    
+    .action-buttons {
+        flex-direction: row !important;
+    }
+    
+    .action-buttons .btn {
+        flex: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header h1 {
+        font-size: 2rem;
+    }
+    
+    .create-request-section .card-header-modern {
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .form-section {
+        padding: 1rem;
+    }
+    
+    .request-card .card-body {
+        padding: 1.5rem !important;
+    }
+    
+    .route-display {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .route-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .city-code {
+        font-size: 1.5rem;
+    }
+}
