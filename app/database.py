@@ -351,6 +351,7 @@ def mark_price_notified(search_request_id: str, notified_price: Optional[float])
     This relies on the existing last_notified_price column in price_tracking.
     """
     if notified_price is None:
+        print(f"Warning: Cannot mark price as notified - notified_price is None")
         return None
 
     supabase = get_supabase_client()
@@ -362,9 +363,14 @@ def mark_price_notified(search_request_id: str, notified_price: Optional[float])
         result = supabase.table('price_tracking').update(update_data).eq('search_request_id', search_request_id).execute()
 
         if result.data:
+            print(f"Successfully updated last_notified_price to ${float(notified_price):.2f} for request {search_request_id}")
             return result.data[0]
-        return None
+        else:
+            print(f"Warning: mark_price_notified returned no data for request {search_request_id}")
+            return None
     except Exception as e:
-        print(f"Error marking price as notified: {e}")
+        print(f"Error marking price as notified: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 

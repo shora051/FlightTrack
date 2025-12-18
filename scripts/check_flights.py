@@ -148,10 +148,15 @@ def check_all_flights():
                                         )
 
                                         if email_sent and not dry_run:
-                                            mark_price_notified(request_id, latest_price)
-                                            print(f"  ✓ Price alert notification recorded in database")
+                                            result = mark_price_notified(request_id, latest_price)
+                                            if result:
+                                                print(f"  ✓ Price alert notification recorded in database (last_notified_price=${latest_price:.2f})")
+                                            else:
+                                                print(f"  ✗ WARNING: Failed to update last_notified_price in database")
+                                        elif dry_run:
+                                            print(f"  → DRY RUN: Would mark last_notified_price=${latest_price:.2f} (email not actually sent)")
                                         elif not email_sent:
-                                            print(f"  ✗ WARNING: Failed to send price alert email to {to_email}")
+                                            print(f"  ✗ WARNING: Failed to send price alert email to {to_email} - last_notified_price NOT updated")
                                     else:
                                         print("  ✗ Skipping alert: user has no email on file.")
                                 else:
